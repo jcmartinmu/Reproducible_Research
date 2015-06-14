@@ -1,0 +1,80 @@
+## Load the activity data and saves it as "data":
+
+data<-read.csv("activity.csv",header=TRUE) 
+
+## Converting "data$date" into a Date format:
+data$date<-as.Date(data$date,format="%Y-%m-%d")
+
+## Deleting NA values:
+data<-na.omit(data)
+temp<-aggregate(data$steps,list(dates=data$date),FUN=sum)
+
+## What is mean total number of steps taken per day?
+## Getting the mean and the median under a data frame called "stats":
+mean_steps_per_day<-mean(temp$x)
+meadian_steps_per_day<-median(temp$x)
+stats<-data.frame(mean_steps_per_day,meadian_steps_per_day)
+stats
+
+## Histogram of Number of steps taken each day:
+
+library("graphics")
+plot(dates,temp$x,type="h",main="Total number of steps taken each day",xlab="Dates",ylab="Steps per day")
+
+## Alternative graph with ggplot2:
+
+library("ggplot2")
+p<-ggplot(data,aes(data$date,data$steps))
+h<-p+geom_bar(data=data,stat="identity")
+h<-p+geom_bar(data=data,stat="identity")+xlab("Number of steps taken each day")+ylab("Frequency of steps taken each day")
+
+## Total number of steps taken per day graph:
+
+per_day<-tapply(data$steps, data$date, sum)
+hist(perday,10, main = "Total number of steps taken per day", xlab = "")
+
+## What is the average daily activity pattern?
+## Time series plot:
+
+library(dplyr)
+library(plyr)
+five_min_int <- ddply(data,~interval, summarise, mean=mean(steps))
+
+qplot(x=interval,y=mean,data=five_min_int,geom="line",main="Time Series: Average number of steps across all days",xlab="5 minute interval",ylab="Number of Steps")
+
+## Interval with the maximum number of steps:
+
+int_max<-five_min_int[which.max(five_min_int$mean), ]
+int_max
+
+## Imputing missing values:
+
+## Reporting the number of missing values NAs:
+
+original_data<-read.csv("activity.csv",header=TRUE)
+total_NA<-sum(is.na(original_data$steps))
+total_NA
+
+interval_average <- aggregate(steps ~ interval, data = original_data, FUN = mean)
+
+fillNA <- numeric()
+for (i in 1:nrow(original_data)) {
+  measure <- original_data[i, ]
+  if (is.na(measure$steps)) {
+    steps <- subset(interval_average, interval == measure$interval)$steps
+  } else {
+    steps <- measure$steps
+  }
+  fillNA <- c(fillNA, steps)
+}
+
+new_original<-original_data
+new_original$steps<-fillNA
+
+Total_steps_two <- aggregate(steps ~ date, data = new_original, sum, na.rm = TRUE)
+hist(Total_steps_two$steps,main="Total number of steps replacing NA values by the mean",xlab="Number of steps",col="green")
+
+new_original_stats<-c(mean(Total_steps_two$steps),median(Total_steps_two$steps))
+new_original_stats
+
+## Are there differences in activity patterns between weekdays and weekends?
