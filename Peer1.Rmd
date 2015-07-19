@@ -1,0 +1,121 @@
+---
+title: "Peer1"
+author: "Juan Martinez"
+date: "Sunday, July 19, 2015"
+output: html_document
+---
+Introduction:
+
+This is data is provided by Fitbit, Nike Fuelband, or Jawbone Up. And the main purpose of the project is make explortory analysis of data from some devices that were used to "quantify self" movement.
+
+Getting and cleaning the data:
+
+Load the activity data and saves it as "data":
+```{r,echo=TRUE}
+data<-read.csv("activity.csv",header=TRUE) 
+data$date<-as.Date(data$date,format="%Y-%m-%d")
+data<-na.omit(data)
+temp<-aggregate(data$steps,list(dates=data$date),FUN=sum)
+```
+
+What is mean total number of steps taken per day?
+Getting the mean and the median under a data frame called "stats":
+```{r,echo=FALSE}
+mean_steps_per_day<-mean(temp$x)
+meadian_steps_per_day<-median(temp$x)
+stats<-data.frame(mean_steps_per_day,meadian_steps_per_day)
+stats
+```
+
+Histogram of Number of steps taken each day:
+
+```{r,echo=TRUE}
+plot(temp$dates,temp$x,type="h",main="Total number of steps taken each day",xlab="Dates",ylab="Steps per day")
+library(ggplot2)
+p<-ggplot(data,aes(data$date,data$steps))
+h<-p+geom_bar(data=data,stat="identity")
+h<-p+geom_bar(data=data,stat="identity")+xlab("Number of steps taken each day")+ylab("Frequency of steps taken each day")
+## What is the average daily activity pattern?
+## Time series plot:
+library(plyr)
+library(dplyr)
+five_min_int <- ddply(data,~interval, summarise, mean=mean(steps))
+qplot(x=interval,y=mean,data=five_min_int,geom="line",main="Time Series: Average number of steps across all days",xlab="5 minute interval",ylab="Number of Steps")
+```
+
+Alternative graph with ggplot2:
+
+```{r,echo=FALSE}
+library(ggplot2)
+p<-ggplot(data,aes(data$date,data$steps))
+h<-p+geom_bar(data=data,stat="identity")
+h<-p+geom_bar(data=data,stat="identity")+xlab("Number of steps taken each day")+ylab("Frequency of steps taken each day")
+print(h)
+```
+
+Another alternative graph with more information:
+
+```{r,echo=FALSE}
+per_day<-tapply(data$steps, data$date, sum)
+hist(perday,10, main = "Total number of steps taken per day", xlab = "")
+```
+
+Interval with the maximum number of steps:
+
+```{r,echo=FALSE}
+int_max<-five_min_int[which.max(five_min_int$mean), ]
+int_max
+```
+ Imputing missing values:
+ Reporting the number of missing values NAs:
+
+```{r,echo=FALSE}
+original_data<-read.csv("activity.csv",header=TRUE)
+total_NA<-sum(is.na(original_data$steps))
+total_NA
+interval_average <- aggregate(steps ~ interval, data = original_data, FUN = mean)
+fillNA <- numeric()
+for (i in 1:nrow(original_data)) {
+  measure <- original_data[i, ]
+  if (is.na(measure$steps)) {
+    steps <- subset(interval_average, interval == measure$interval)$steps
+  } else {
+    steps <- measure$steps
+  }
+  fillNA <- c(fillNA, steps)
+}
+new_original<-original_data
+new_original$steps<-fillNA
+Total_steps_two <- aggregate(steps ~ date, data = new_original, sum, na.rm = TRUE)
+hist(Total_steps_two$steps,main="Total number of steps replacing NA values by the mean",xlab="Number of steps",col="green")
+new_original_stats<-c(mean(Total_steps_two$steps),median(Total_steps_two$steps))
+new_original_stats
+## Are there differences in activity patterns between weekdays and weekends?
+## Let's convert new_original$date from factor to date, in order to filer
+## weekday from weekends.
+library(timeDate)
+new_original$date<-as.Date(new_original$date,format="%Y-%m-%d")
+Day<-weekdays(new_original$date,abbreviate=FALSE)
+new_original<-data.frame(new_original,Day)
+Daytype <- function(Day) {
+  if (weekdays(as.Date(Day)) %in% c("sábado", "domingo")) {
+    "weekend"
+  } else {
+    "weekday"
+  }
+}
+new_original$Daytype <- as.factor(sapply(new_original$date, Daytype))
+
+head(new_original)
+```
+
+
+```{r,echo=FALSE}
+par(mfrow = c(2, 1))
+for (type in c("weekend", "weekday")) {
+  steps.type <- aggregate(steps ~ interval, data = new_original, subset = new_original$Daytype == 
+                            type, FUN = mean)
+  plot(steps.type, type = "l", main = type)
+}
+```
+
